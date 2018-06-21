@@ -13,28 +13,30 @@ Fortunately, Kubernetes provides [Flexvolume][7], which is a plugin mechanism en
 Installing
 ----------
 
-The flexvolume plugin is a single shell script named [cifs][8]. This shell scripted must be available in `/usr/libexec/kubernetes/kubelet-plugins/volume/exec/fstab~cifs/` on the Kubernetes master and on each of the Kubernetes nodes. The directory name `fstab~cifs` will be [mapped][9] to the Flexvolume driver name `fstab/cifs`.
+The flexvolume plugin is a single shell script named [cifs][8]. This shell script must be available on the Kubernetes master and on each of the Kubernetes nodes. By default, Kubernetes searches for third party volume plugins in `/usr/libexec/kubernetes/kubelet-plugins/volume/exec/`. The plugin directory can be configured with the kubelet's `--volume-plugin-dir` parameter, run `ps aux | grep kubelet` to learn the location of the plugin directory on your system (see [#1][9]). The `cifs` script must be located in a subdirectory named `fstab~cifs/`. The directory name `fstab~cifs/` will be [mapped][10] to the Flexvolume driver name `fstab/cifs`.
 
 On the Kubernetes master and on each Kubernetes node run the following commands:
 
 ```bash
-mkdir -p '/usr/libexec/kubernetes/kubelet-plugins/volume/exec/fstab~cifs'
-cd '/usr/libexec/kubernetes/kubelet-plugins/volume/exec/fstab~cifs'
+VOLUME_PLUGIN_DIR="/usr/libexec/kubernetes/kubelet-plugins/volume/exec"
+mkdir -p "$VOLUME_PLUGIN_DIR/fstab~cifs"
+cd "$VOLUME_PLUGIN_DIR/fstab~cifs"
 curl -L -O https://raw.githubusercontent.com/fstab/cifs/master/cifs
 chmod 755 cifs
 ```
 
 The `cifs` script requires a few executables to be available on each host system:
 
-* `mount.cifs`, on Ubuntu this is in the [cifs-utils][10] package.
-* `jq`, on Ubuntu this is in the [jq][11] package.
-* `mountpoint`, on Ubuntu this is in the [util-linux][12] package.
-* `base64`, on Ubuntu this is in the [coreutils][13] package.
+* `mount.cifs`, on Ubuntu this is in the [cifs-utils][11] package.
+* `jq`, on Ubuntu this is in the [jq][12] package.
+* `mountpoint`, on Ubuntu this is in the [util-linux][13] package.
+* `base64`, on Ubuntu this is in the [coreutils][14] package.
 
 To check if the installation was successful, run the following command:
 
 ```bash
-/usr/libexec/kubernetes/kubelet-plugins/volume/exec/fstab~cifs/cifs init
+VOLUME_PLUGIN_DIR="/usr/libexec/kubernetes/kubelet-plugins/volume/exec"
+$VOLUME_PLUGIN_DIR/fstab~cifs/cifs init
 ```
 
 It should output a JSON string containing `"status": "Success"`. This command is also run by Kubernetes itself when the cifs plugin is detected on the file system.
@@ -42,7 +44,7 @@ It should output a JSON string containing `"status": "Success"`. This command is
 Running
 -------
 
-The plugin takes the CIFS username and password from a [Kubernetes Secret][14]. To create the secret, you first have to convert your username and password to base64 encoding:
+The plugin takes the CIFS username and password from a [Kubernetes Secret][15]. To create the secret, you first have to convert your username and password to base64 encoding:
 
 ```bash
 echo -n username | base64
@@ -129,9 +131,10 @@ Inside the container, you should see the CIFS share mounted to `/data`.
 [6]: https://hetzner.cloud
 [7]: https://github.com/kubernetes/community/blob/master/contributors/devel/flexvolume.md
 [8]: https://github.com/fstab/cifs
-[9]: https://github.com/kubernetes/community/blob/master/contributors/devel/flexvolume.md#prerequisites
-[10]: https://packages.ubuntu.com/bionic/cifs-utils
-[11]: https://packages.ubuntu.com/bionic/jq
-[12]: https://packages.ubuntu.com/bionic/util-linux
-[13]: https://packages.ubuntu.com/bionic/coreutils
-[14]: https://kubernetes.io/docs/concepts/configuration/secret/
+[9]: https://github.com/fstab/cifs/issues/1
+[10]: https://github.com/kubernetes/community/blob/master/contributors/devel/flexvolume.md#prerequisites
+[11]: https://packages.ubuntu.com/bionic/cifs-utils
+[12]: https://packages.ubuntu.com/bionic/jq
+[13]: https://packages.ubuntu.com/bionic/util-linux
+[14]: https://packages.ubuntu.com/bionic/coreutils
+[15]: https://kubernetes.io/docs/concepts/configuration/secret/
