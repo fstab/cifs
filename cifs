@@ -124,7 +124,8 @@ doMount() {
 		errorExit "cifs mount: mount directory is not an empty directory: '$mountPoint'"
 	fi
 
-	result=$(mount -t cifs "$networkPath" "$mountPoint" -o "username=$cifsUsername,password=$cifsPassword,$mountOptions" 2>&1)
+	export PASSWD="$cifsPassword"
+	result=$(mount -t cifs "$networkPath" "$mountPoint" -o "username=$cifsUsername,$mountOptions" 2>&1)
 	if [[ $? -ne 0 ]] ; then
 		errorExit "cifs mount: failed to mount the network path: $result"
 	fi
