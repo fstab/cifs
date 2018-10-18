@@ -10,6 +10,16 @@ Docker containers running in Kubernetes have an ephemeral file system: Once a co
 
 Fortunately, Kubernetes provides [Flexvolume][7], which is a plugin mechanism enabling users to write their own drivers. There are a few flexvolume drivers for CIFS out there, but for different reasons none of them seemed to work for me. So I wrote my own, which can be found on [github.com/fstab/cifs][8].
 
+Pre-requisites
+--------------
+
+The `cifs` script requires a few executables to be available on each host system:
+
+* `mount.cifs`, on Ubuntu this is in the [cifs-utils][11] package.
+* `jq`, on Ubuntu this is in the [jq][12] package.
+* `mountpoint`, on Ubuntu this is in the [util-linux][13] package.
+* `base64`, on Ubuntu this is in the [coreutils][14] package.
+
 Installing
 ----------
 
@@ -24,13 +34,6 @@ cd "$VOLUME_PLUGIN_DIR/fstab~cifs"
 curl -L -O https://raw.githubusercontent.com/fstab/cifs/master/cifs
 chmod 755 cifs
 ```
-
-The `cifs` script requires a few executables to be available on each host system:
-
-* `mount.cifs`, on Ubuntu this is in the [cifs-utils][11] package.
-* `jq`, on Ubuntu this is in the [jq][12] package.
-* `mountpoint`, on Ubuntu this is in the [util-linux][13] package.
-* `base64`, on Ubuntu this is in the [coreutils][14] package.
 
 To check if the installation was successful, run the following command:
 
