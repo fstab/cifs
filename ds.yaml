@@ -1,0 +1,26 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: fstab-cifs
+
+spec:
+  template:
+    metadata:
+      name: fstab-cifs
+      labels:
+        app: fstab-cifs
+    spec:
+      containers:
+        # TODO Change to your container registry.
+        - image: "<image_url>"
+          name: fstab-cifs
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /flexmnt
+              name: flexvolume-mount
+      volumes:
+        - name: flexvolume-mount
+          hostPath:
+            # TODO Change to the Flexvolume plugin directory of your cluster.
+            path: /usr/libexec/kubernetes/kubelet-plugins/volume/exec
