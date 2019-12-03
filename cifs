@@ -31,12 +31,19 @@ set -u
 #   - name: busybox
 #     image: busybox
 #     command:
-#       - sleep
-#       - "3600"
+#       - sh
+#       - -c
+#       - |
+#         ls -l /data
+#         echo
+#         ls -l /ro-data
+#         sleep 3600
 #     imagePullPolicy: IfNotPresent
 #     volumeMounts:
 #     - name: test
 #       mountPath: /data
+#     - name: ro-test
+#       mountPath: /ro-data
 #   volumes:
 #   - name: test
 #     flexVolume:
@@ -47,6 +54,14 @@ set -u
 #       options:
 #         networkPath: "//example-server/backup"
 #         mountOptions: "dir_mode=0755,file_mode=0644,noperm"
+#   - name: ro-test
+#     flexVolume:
+#       driver: "fstab/cifs"
+#       fsType: "cifs"
+#       options:
+#         guest: "true"
+#         networkPath: "//example-server/funny-cat-pictures"
+#       readOnly: true
 # --------------------------------------------------------------------
 
 # Uncomment the following lines to see how this plugin is called:
@@ -96,23 +111,35 @@ doMount() {
 	fi
 	mountOptions="$(jq --raw-output -e '.mountOptions' <<< "$json" 2>/dev/null)"
 	if [[ $? -ne 0 ]] ; then
-		errorExit "cifs mount: option mountOptions missing in flexvolume configuration."
+		mountOptions=""
 	fi
-	cifsUsernameBase64="$(jq --raw-output -e '.["kubernetes.io/secret/username"]' <<< "$json" 2>/dev/null)"
-	if [[ $? -ne 0 ]] ; then
-		errorExit "cifs mount: username not found. the flexVolume definition must contain a secretRef to a secret with username and password."
+	readwrite="$(jq --raw-output -e '.["kubernetes.io/readwrite"]' <<< "$json" 2>/dev/null)"
+	if [[ $? -eq 0 ]] ; then
+		mountOptions="$readwrite,$mountOptions"
 	fi
-	cifsPasswordBase64="$(jq --raw-output -e '.["kubernetes.io/secret/password"]' <<< "$json" 2>/dev/null)"
-	if [[ $? -ne 0 ]] ; then
-		errorExit "cifs mount: password not found. the flexVolume definition must contain a secretRef to a secret with username and password."
-	fi
-	cifsUsername="$(base64 --decode <<< "$cifsUsernameBase64" 2>/dev/null)"
-	if [[ $? -ne 0 ]] ; then
-		errorExit "cifs mount: username secret is not base64 encoded."
-	fi
-	cifsPassword="$(base64 --decode <<< "$cifsPasswordBase64" 2>/dev/null)"
-	if [[ $? -ne 0 ]] ; then
-		errorExit "cifs mount: password secret is not base64 encoded."
+	guest="$(jq --raw-output -e '.guest' <<< "$json" 2>/dev/null)"
+	if [[ $? -eq 0 ]] && [[ "$guest" == "true" ]]; then
+		mountOptions="guest,$mountOptions"
+	else
+		cifsUsernameBase64="$(jq --raw-output -e '.["kubernetes.io/secret/username"]' <<< "$json" 2>/dev/null)"
+		if [[ $? -ne 0 ]] ; then
+			errorExit "cifs mount: username not found. the flexVolume definition must contain a secretRef to a secret with username and password."
+		fi
+		cifsPasswordBase64="$(jq --raw-output -e '.["kubernetes.io/secret/password"]' <<< "$json" 2>/dev/null)"
+		if [[ $? -ne 0 ]] ; then
+			errorExit "cifs mount: password not found. the flexVolume definition must contain a secretRef to a secret with username and password."
+		fi
+		cifsUsername="$(base64 --decode <<< "$cifsUsernameBase64" 2>/dev/null)"
+		if [[ $? -ne 0 ]] ; then
+			errorExit "cifs mount: username secret is not base64 encoded."
+		fi
+		cifsPassword="$(base64 --decode <<< "$cifsPasswordBase64" 2>/dev/null)"
+		if [[ $? -ne 0 ]] ; then
+			errorExit "cifs mount: password secret is not base64 encoded."
+		fi
+
+		mountOptions="username=$cifsUsername,$mountOptions"
+		export PASSWD="$cifsPassword"
 	fi
 	if ! mkdir -p "$mountPoint" > /dev/null 2>&1 ; then
 		errorExit "cifs mount: failed to create mount directory: '$mountPoint'"
@@ -124,8 +151,10 @@ doMount() {
 		errorExit "cifs mount: mount directory is not an empty directory: '$mountPoint'"
 	fi
 
-	export PASSWD="$cifsPassword"
-	result=$(mount -t cifs "$networkPath" "$mountPoint" -o "username=$cifsUsername,$mountOptions" 2>&1)
+	# Remove any stray comma from the end
+	mountOptions="${mountOptions%,}"
+
+	result=$(mount -t cifs "$networkPath" "$mountPoint" -o "$mountOptions" 2>&1)
 	if [[ $? -ne 0 ]] ; then
 		errorExit "cifs mount: failed to mount the network path: $result"
 	fi
