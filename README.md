@@ -44,14 +44,15 @@ It should output a JSON string containing `"status": "Success"`. This command is
 Running
 -------
 
-The plugin takes the CIFS username and password from a [Kubernetes Secret][15]. To create the secret, you first have to convert your username and password to base64 encoding:
+The plugin takes the CIFS username, password, and optionally domain from a [Kubernetes Secret][15]. To create the secret, you first have to convert your username, domain, and password to base64 encoding:
 
 ```bash
 echo -n username | base64
 echo -n password | base64
+echo -n domain | base64 # optional
 ```
 
-Then, create a file `secret.yml` and use the ouput of the above commands as username and password:
+Then, create a file `secret.yml` and use the ouput of the above commands as username, domain, and password:
 
 ```yaml
 apiVersion: v1
@@ -63,6 +64,7 @@ type: fstab/cifs
 data:
   username: 'ZXhhbXBsZQ=='
   password: 'bXktc2VjcmV0LXBhc3N3b3Jk'
+  domain: 'ZG9tYWluLmNvbQ==' # optional
 ```
 
 Apply the secret:
