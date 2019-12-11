@@ -50,9 +50,13 @@ set -u
 # --------------------------------------------------------------------
 
 # Uncomment the following lines to see how this plugin is called:
-# echo >> /tmp/cifs.log
-# date >> /tmp/cifs.log
-# echo "$@" >> /tmp/cifs.log
+debug=false
+
+if [ "$debug" = true ] ; then
+	echo >> /tmp/cifs.log
+	date >> /tmp/cifs.log
+	echo "$@" >> /tmp/cifs.log
+fi
 
 init() {
 	assertBinaryInstalled mount.cifs cifs-utils
@@ -106,6 +110,34 @@ doMount() {
 	if [[ $? -ne 0 ]] ; then
 		errorExit "cifs mount: password not found. the flexVolume definition must contain a secretRef to a secret with username and password."
 	fi
+
+	if ! cifsDomainBase64="$(jq --raw-output -e '.["kubernetes.io/secret/domain"]' <<< "$json" 2>/dev/null)" ; then
+		errorExit "cifs mount: error retrieving domain from secret"
+	fi
+
+	if [[ -n "$cifsDomainBase64" ]] ; then
+		if [ "$debug" = true ] ; then
+			echo "cifsDomainBase64: $cifsDomainBase64" >> /tmp/cifs.log
+		fi
+
+		if ! cifsDomain="$(base64 --decode <<< "$cifsDomainBase64" 2>/dev/null)" ; then
+			errorExit "cifs mount: domain secret is not base64 encoded."
+		fi
+
+		if [ "$debug" = true ] ; then
+			echo "cifsDomain: $cifsDomain" >> /tmp/cifs.log
+			echo "mountOptions before adding domain: $mountOptions" >> /tmp/cifs.log
+		fi
+
+		if ! mountOptions="${mountOptions},domain=${cifsDomain}" ; then
+			errorExit "cifs mount: error appending domain to mountOptions"
+		fi 
+
+		if [ "$debug" = true ] ; then
+			echo "mountOptions: $mountOptions" >> /tmp/cifs.log
+		fi
+	fi
+
 	cifsUsername="$(base64 --decode <<< "$cifsUsernameBase64" 2>/dev/null)"
 	if [[ $? -ne 0 ]] ; then
 		errorExit "cifs mount: username secret is not base64 encoded."
