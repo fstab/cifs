@@ -139,7 +139,8 @@ doUnmount() {
 	fi
 	mountPoint="$1"
 	if [[ $(mountpoint "$mountPoint") != *"is a mountpoint"* ]] ; then
-		errorExit "cifs unmount: no filesystem mounted under directory: '$mountPoint'"
+		echo '{ "status": "Success" }'
+		exit 0
 	fi
 	result=$(umount "$mountPoint" 2>&1)
 	if [[ $? -ne 0 ]] ; then
