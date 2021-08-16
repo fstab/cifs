@@ -102,6 +102,7 @@ spec:
       options:
         networkPath: "//server/share"
         mountOptions: "dir_mode=0755,file_mode=0644,noperm"
+        selinuxEnabled: "true"
 ```
 
 Start the pod:
