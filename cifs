@@ -131,7 +131,7 @@ doMount() {
 	fi
 
 	export PASSWD="$cifsPassword"
-	result=$(mount -t cifs "$networkPath" "$mountPoint" -o "username=$cifsUsername,$mountOptions" 2>&1)
+	result=$(mount -t cifs "$networkPath" "$mountPoint" -o "username=$cifsUsername,$mountOptions$selinuxOptions" 2>&1)
 	if [[ $? -ne 0 ]] ; then
 		errorExit "cifs mount: failed to mount the network path: $result"
 	fi
