@@ -98,6 +98,12 @@ doMount() {
 	if [[ $? -ne 0 ]] ; then
 		errorExit "cifs mount: option mountOptions missing in flexvolume configuration."
 	fi
+	
+	selinuxOptions=""
+        selinuxEnabled="$(jq --raw-output -e '.selinuxEnabled' <<< "$json" 2>/dev/null)"
+        if [[ "$(echo $selinuxEnabled|tr '[A-Z]' '[a-z]')" == "true"  ]] ; then
+                selinuxOptions=",context=system_u:object_r:container_file_t:s0"
+	fi
 	cifsUsernameBase64="$(jq --raw-output -e '.["kubernetes.io/secret/username"]' <<< "$json" 2>/dev/null)"
 	if [[ $? -ne 0 ]] ; then
 		errorExit "cifs mount: username not found. the flexVolume definition must contain a secretRef to a secret with username and password."
