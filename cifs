@@ -4,6 +4,7 @@ set -u
 
 DEBUG=1
 LOGFILE=/var/log/cifs.log
+MAXLOGFILESIZE=100 # In megabytes
 
 # ====================================================================
 # Example configuration:
@@ -52,18 +53,22 @@ LOGFILE=/var/log/cifs.log
 #         mountOptions: "dir_mode=0755,file_mode=0644,noperm"
 # --------------------------------------------------------------------
 
-# Uncomment the following lines to see how this plugin is called:
-#echo >> /tmp/cifs_.log
-#date >> /tmp/cifs_.log
-#echo "$@" >> /tmp/cifs_.log
 
 log() {
         level=$1
-        message=$2
+        shift
+        message=$@
+        shift
         if [ ${DEBUG} -ne 0 ]
         then
-                echo "${level}:::${message}" >>${LOGFILE}
+                echo "$(date +%Y%m%d-%H:%M:%S):::${level}:::${message}" >>${LOGFILE}
         fi
+}
+
+manageSize(){
+    [ ! -f ${LOGFILE} ] && log "info" "log initialized" && return
+    [ $(du -sm ${LOGFILE}|cut -f1) -gt ${MAXLOGFILESIZE} ] && mv ${LOGFILE} ${LOGFILE}.1 && log "info" "log initialized"
+
 }
 
 checkMount() {
@@ -103,7 +108,6 @@ errorExit() {
 }
 
 doMount() {
-        log "info" "mount action - $1 '$2'"
         if [[ -z ${1:-} || -z ${2:-} ]] ; then
                 errorExit "cifs mount: syntax error. usage: cifs mount <mount dir> <json options>"
         fi
@@ -155,7 +159,7 @@ doMount() {
 
         export PASSWD="$cifsPassword"
 
-        log "debug" "mount -t cifs \"$networkPath\" \"$mountPoint\" -o \"username=$cifsUsername,$mountOptions$selinuxOptions\""
+        log "debug" "mount -t cifs $networkPath $mountPoint -o username=$cifsUsername,$mountOptions$selinuxOptions"
 
         result=$(mount -t cifs "$networkPath" "$mountPoint" -o "username=$cifsUsername,$mountOptions$selinuxOptions" 2>&1)
         if [[ $? -ne 0 ]] ; then
@@ -167,7 +171,7 @@ doMount() {
 }
 
 doUnmount() {
-        log "info" "umount action - '$2'"
+        #log "info" "umount action - '$2'"
         if [[ -z ${1:-} ]] ; then
                 errorExit "cifs unmount: syntax error. usage: cifs unmount <mount dir>"
         fi
@@ -193,6 +197,11 @@ not_supported() {
         exit 1
 }
 
+# Uncomment the following lines to see how this plugin is called:
+#echo >> /tmp/ci0fs_.log
+manageSize
+log "debug" "RAWDATA $@"
+
 command=${1:-}
 if [[ -n $command ]]; then
         shift
@@ -203,9 +212,11 @@ case "$command" in
                 init "$@"
                 ;;
         mount)
+                log "debug" "mount action - '$@'"
                 doMount "$@"
                 ;;
         unmount)
+                log "debug" "unmount action - '$@'"
                 doUnmount "$@"
                 ;;
         *)
